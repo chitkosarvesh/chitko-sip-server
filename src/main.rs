@@ -1,7 +1,8 @@
 mod sip_parser;
 
-use crate::sip_parser::SipMessage;
-use tokio::io::AsyncReadExt;
+use crate::sip_parser::{SipMessage, SipResponse};
+use sip_parser::{SipMessageType, handle_register};
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
 
 /// entrypoint for the sip server
 #[tokio::main]
@@ -57,7 +58,9 @@ async fn start_tcp_server(host: String, port: u16) -> Result<(), std::io::Error>
 }
 
 async fn process_stream(stream: tokio::net::TcpStream) {
-    let mut buf_reader = tokio::io::BufReader::new(stream);
+    let (reader, writer) = stream.into_split();
+    let mut buf_reader = tokio::io::BufReader::new(reader);
+
     let mut buf = vec![0; 65535];
     tokio::spawn(async move {
         match buf_reader.read(&mut buf).await {
@@ -68,16 +71,27 @@ async fn process_stream(stream: tokio::net::TcpStream) {
                 log::debug!("Read {} bytes from client", n);
                 log::debug!("{}", str::from_utf8(&buf[..n]).unwrap());
                 let parsed_message = SipMessage::new(str::from_utf8(&buf[..n]).unwrap());
-                match parsed_message.message_type.as_str() {
-                    "INVITE" => log::info!("Received INVITE request"),
-                    _ => log::info!("Received message of type {}", parsed_message.message_type),
+                let response = match parsed_message.message_type {
+                    SipMessageType::REGISTER => handle_register(parsed_message),
+                    SipMessageType::INVITE => None,
+                    _ => {
+                        log::info!(
+                            "Received message of type {}",
+                            parsed_message.message_type.to_str()
+                        );
+                        None
+                    }
+                };
+                if response.is_some() {
+                    tokio::spawn(async move {
+                        send_response(writer, response.unwrap()).await.unwrap();
+                    });
                 }
             }
             Err(e) => log::error!("Error reading from client: {}", e),
         }
     });
 }
-
 /// struct to hold all command line arguments
 struct ChitkoSipServerArgs {
     verbose: bool,
@@ -122,4 +136,13 @@ impl ChitkoSipServerArgs {
         }
         args
     }
+}
+
+async fn send_response(
+    mut stream: tokio::net::tcp::OwnedWriteHalf,
+    response: SipResponse,
+) -> Result<(), std::io::Error> {
+    log::info!("Sending response to client {}", response.as_string());
+    let _ = stream.write_all(&response.as_bytes()).await;
+    Ok(())
 }
