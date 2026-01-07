@@ -67,7 +67,11 @@ async fn process_stream(stream: tokio::net::TcpStream) {
             Ok(n) => {
                 log::debug!("Read {} bytes from client", n);
                 log::debug!("{}", str::from_utf8(&buf[..n]).unwrap());
-                SipMessage::new(str::from_utf8(&buf[..n]).unwrap());
+                let parsed_message = SipMessage::new(str::from_utf8(&buf[..n]).unwrap());
+                match parsed_message.message_type.as_str() {
+                    "INVITE" => log::info!("Received INVITE request"),
+                    _ => log::info!("Received message of type {}", parsed_message.message_type),
+                }
             }
             Err(e) => log::error!("Error reading from client: {}", e),
         }

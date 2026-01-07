@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 
 pub struct SipMessage {
-    headers: HashMap<String, String>,
-    body: Option<String>,
-    message_type: String,
-    extra: Option<String>,
+    pub headers: HashMap<String, String>,
+    pub body: Option<String>,
+    pub message_type: String,
+    pub extra: Option<String>,
 }
 impl SipMessage {
     pub fn new(raw_message: &str) -> Self {

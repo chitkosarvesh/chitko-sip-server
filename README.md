@@ -1,6 +1,7 @@
 # Chitko SIP Server
 
 ![Release](https://img.shields.io/github/v/release/chitkosarvesh/chitko-sip-server?label=Release&sort=semver)
+[![Rust](https://github.com/chitkosarvesh/chitko-sip-server/actions/workflows/rust.yml/badge.svg)](https://github.com/chitkosarvesh/chitko-sip-server/actions/workflows/rust.yml)
 
 ## Description
 
